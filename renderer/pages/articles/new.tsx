@@ -14,12 +14,14 @@ import Layout from '../../components/Layout';
 import { ArticleEditor } from '../../components/ArticleEditor';
 import { useArticleOperations } from '../../hooks/useArticles';
 import { useArticlesStore } from '../../store/articles';
+import { useCategoriesList } from '../../hooks/useCategories';
 import { ArticleCreate } from '../../types/api';
 
 const NewArticlePage: NextPage = () => {
   const router = useRouter();
   const { createArticle, isCreating } = useArticleOperations();
   const { error, clearError } = useArticlesStore();
+  const { data: categories = [] } = useCategoriesList();
   
   // Handle article creation
   const handleSave = useCallback(async (data: ArticleCreate) => {
@@ -138,7 +140,7 @@ const NewArticlePage: NextPage = () => {
           showPreview={true}
           autoSave={true}
           autoSaveInterval={30000} // 30 seconds
-          availableCategories={[]} // Will be populated when category hooks are implemented
+          availableCategories={categories}
         />
         
         {/* Help text */}

@@ -5,29 +5,75 @@ import { spawn, ChildProcess } from 'child_process';
 
 let backendProcess: ChildProcess | null = null;
 
-export const setupIpc = (): void => {
-  // Window controls
-  ipcMain.handle('window:minimize', () => {
-    const window = BrowserWindow.getFocusedWindow();
-    window?.minimize();
-  });
+// Enhanced error logging for IPC
+const logIpcError = (error: Error, context: string): void => {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] IPC ERROR in ${context}: ${error.message}\n${error.stack}\n\n`;
+  
+  console.error(logMessage);
+  
+  // Write to log file
+  try {
+    const logDir = path.join(__dirname, '../logs');
+    if (!require('fs').existsSync(logDir)) {
+      require('fs').mkdirSync(logDir, { recursive: true });
+    }
+    
+    const logFile = path.join(logDir, 'electron-ipc.log');
+    require('fs').appendFileSync(logFile, logMessage);
+  } catch (logError) {
+    console.error('Failed to write to log file:', logError);
+  }
+};
 
-  ipcMain.handle('window:maximize', () => {
-    const window = BrowserWindow.getFocusedWindow();
-    if (window?.isMaximized()) {
-      window.unmaximize();
-    } else {
-      window?.maximize();
+// Wrapper for IPC handlers with error handling
+const safeIpcHandle = (channel: string, handler: (...args: any[]) => any): void => {
+  ipcMain.handle(channel, async (...args) => {
+    try {
+      return await handler(...args);
+    } catch (error) {
+      logIpcError(error as Error, channel);
+      return { success: false, error: (error as Error).message };
     }
   });
+};
 
-  ipcMain.handle('window:close', () => {
+export const setupIpc = (): void => {
+  // Window controls
+  safeIpcHandle('window:minimize', () => {
     const window = BrowserWindow.getFocusedWindow();
-    window?.close();
+    if (!window) {
+      throw new Error('No focused window found');
+    }
+    window.minimize();
+    return { success: true };
+  });
+
+  safeIpcHandle('window:maximize', () => {
+    const window = BrowserWindow.getFocusedWindow();
+    if (!window) {
+      throw new Error('No focused window found');
+    }
+    
+    if (window.isMaximized()) {
+      window.unmaximize();
+    } else {
+      window.maximize();
+    }
+    return { success: true };
+  });
+
+  safeIpcHandle('window:close', () => {
+    const window = BrowserWindow.getFocusedWindow();
+    if (!window) {
+      throw new Error('No focused window found');
+    }
+    window.close();
+    return { success: true };
   });
 
   // File operations
-  ipcMain.handle('file:open', async () => {
+  safeIpcHandle('file:open', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
       filters: [
@@ -39,13 +85,25 @@ export const setupIpc = (): void => {
 
     if (!result.canceled && result.filePaths.length > 0) {
       const filePath = result.filePaths[0];
+      
+      // Check if file exists
+      try {
+        await fs.access(filePath);
+      } catch (error) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+      
       const content = await fs.readFile(filePath, 'utf-8');
-      return { content, filePath };
+      return { success: true, content, filePath };
     }
-    return null;
+    return { success: false, message: 'No file selected' };
   });
 
-  ipcMain.handle('file:save', async (event, content: string) => {
+  safeIpcHandle('file:save', async (event, content: string) => {
+    if (!content) {
+      throw new Error('No content provided to save');
+    }
+
     const result = await dialog.showSaveDialog({
       filters: [
         { name: 'Markdown files', extensions: ['md'] },
@@ -55,81 +113,122 @@ export const setupIpc = (): void => {
 
     if (!result.canceled && result.filePath) {
       await fs.writeFile(result.filePath, content, 'utf-8');
-      return result.filePath;
+      return { success: true, filePath: result.filePath };
     }
-    return null;
+    return { success: false, message: 'No file path selected' };
   });
 
   // Backend server management
-  ipcMain.handle('backend:start', async () => {
+  safeIpcHandle('backend:start', async () => {
     if (backendProcess) {
       return { success: false, message: 'Backend server is already running' };
     }
 
+    const backendPath = path.join(__dirname, '../backend/main.py');
+    
+    // Check if backend script exists
     try {
-      const backendPath = path.join(__dirname, '../backend/main.py');
-      backendProcess = spawn('python', [backendPath], {
-        env: { ...process.env, PYTHONPATH: path.join(__dirname, '../backend') }
-      });
-
-      backendProcess.on('error', (error) => {
-        console.error('Backend process error:', error);
-        backendProcess = null;
-      });
-
-      backendProcess.on('exit', (code) => {
-        console.log(`Backend process exited with code ${code}`);
-        backendProcess = null;
-      });
-
-      // Wait a bit to ensure the server starts
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      return { success: true, message: 'Backend server started' };
+      await fs.access(backendPath);
     } catch (error) {
-      console.error('Failed to start backend server:', error);
-      return { success: false, message: 'Failed to start backend server' };
+      throw new Error(`Backend script not found at: ${backendPath}`);
     }
+
+    backendProcess = spawn('python', [backendPath], {
+      env: { ...process.env, PYTHONPATH: path.join(__dirname, '../backend') }
+    });
+
+    backendProcess.on('error', (error) => {
+      logIpcError(error, 'backend-process-error');
+      backendProcess = null;
+    });
+
+    backendProcess.on('exit', (code) => {
+      console.log(`Backend process exited with code ${code}`);
+      if (code !== 0) {
+        logIpcError(new Error(`Backend process exited with code ${code}`), 'backend-process-exit');
+      }
+      backendProcess = null;
+    });
+
+    // Wait a bit to ensure the server starts
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Verify the process is still running
+    if (!backendProcess || backendProcess.killed) {
+      throw new Error('Backend server failed to start properly');
+    }
+
+    return { success: true, message: 'Backend server started' };
   });
 
-  ipcMain.handle('backend:stop', async () => {
+  safeIpcHandle('backend:stop', async () => {
     if (backendProcess) {
       backendProcess.kill();
+      
+      // Wait for process to exit
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       backendProcess = null;
       return { success: true, message: 'Backend server stopped' };
     }
     return { success: false, message: 'Backend server is not running' };
   });
 
-  ipcMain.handle('backend:status', () => {
-    return { running: backendProcess !== null };
+  safeIpcHandle('backend:status', () => {
+    return { 
+      success: true, 
+      running: backendProcess !== null && !backendProcess.killed,
+      pid: backendProcess?.pid || null
+    };
   });
 
   // Settings management
-  ipcMain.handle('settings:get', async () => {
+  safeIpcHandle('settings:get', async () => {
+    const settingsPath = path.join(__dirname, '../config/settings.json');
+    
     try {
-      const settingsPath = path.join(__dirname, '../config/settings.json');
       const content = await fs.readFile(settingsPath, 'utf-8');
-      return JSON.parse(content);
+      const settings = JSON.parse(content);
+      return { success: true, settings };
     } catch (error) {
-      // Return default settings if file doesn't exist
-      return {
+      // Return default settings if file doesn't exist or is corrupted
+      const defaultSettings = {
         theme: 'light',
         autoSave: true,
         backendPort: 8000,
         maxRecentFiles: 10
       };
+      
+      logIpcError(error as Error, 'settings-get-fallback');
+      return { success: true, settings: defaultSettings, isDefault: true };
     }
   });
 
-  ipcMain.handle('settings:set', async (event, settings: any) => {
-    try {
-      const settingsPath = path.join(__dirname, '../config/settings.json');
-      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
-      return { success: true };
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      return { success: false, error: error.message };
+  safeIpcHandle('settings:set', async (event, settings: any) => {
+    if (!settings || typeof settings !== 'object') {
+      throw new Error('Invalid settings object provided');
     }
+
+    const settingsPath = path.join(__dirname, '../config/settings.json');
+    const configDir = path.dirname(settingsPath);
+    
+    // Ensure config directory exists
+    try {
+      await fs.mkdir(configDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist, that's okay
+    }
+
+    // Validate settings before saving
+    const validatedSettings = {
+      ...settings,
+      theme: ['light', 'dark', 'auto'].includes(settings.theme) ? settings.theme : 'light',
+      autoSave: typeof settings.autoSave === 'boolean' ? settings.autoSave : true,
+      backendPort: typeof settings.backendPort === 'number' ? settings.backendPort : 8000,
+      maxRecentFiles: typeof settings.maxRecentFiles === 'number' ? settings.maxRecentFiles : 10
+    };
+
+    await fs.writeFile(settingsPath, JSON.stringify(validatedSettings, null, 2));
+    return { success: true, settings: validatedSettings };
   });
 };

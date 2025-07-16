@@ -61,9 +61,32 @@ services:
     networks:
       - wiki-network
 
+  electron-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.electron
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+      - electron-cache:/app/.electron-cache
+      - electron-builder-cache:/app/.electron-builder-cache
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=2048
+      - ELECTRON_CACHE=/app/.electron-cache
+      - ELECTRON_BUILDER_CACHE=/app/.electron-builder-cache
+      - DISPLAY=:99
+    depends_on:
+      - backend
+    networks:
+      - wiki-network
+    profiles:
+      - electron-build
+
 networks:
   wiki-network:
     driver: bridge
 
 volumes:
   wiki-data:
+  electron-cache:
+  electron-builder-cache:

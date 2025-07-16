@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { useState, useEffect } from 'react';
 import { useThemeStore } from '../store/theme';
 import '../styles/globals.css';
+import '../styles/mdeditor.css';
 
 const lightTheme = createTheme({
   palette: {

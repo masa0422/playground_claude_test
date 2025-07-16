@@ -4,14 +4,21 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  assetPrefix: process.env.NODE_ENV === 'production' ? './' : '',
-  output: 'export',
-  distDir: 'out',
+  // Only use export config for production builds
+  ...(process.env.NODE_ENV === 'production' && {
+    assetPrefix: './',
+    output: 'export',
+    distDir: 'out',
+  }),
   experimental: {
     esmExternals: false,
   },
+  transpilePackages: [
+    '@uiw/react-md-editor',
+    '@uiw/react-markdown-preview'
+  ],
   webpack: (config, { isServer }) => {
-    if (!isServer) {
+    if (!isServer && process.env.NODE_ENV === 'production') {
       config.target = 'electron-renderer';
     }
     

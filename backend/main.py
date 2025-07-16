@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 from database.database import get_db, create_tables
-from routes.articles import router as articles_router
-from routes.search import router as search_router
-from routes.categories import router as categories_router
+from backend.routes.articles import router as articles_router
+from backend.routes.search import router as search_router
+from backend.routes.categories import router as categories_router
 from contextlib import asynccontextmanager
 import logging
 

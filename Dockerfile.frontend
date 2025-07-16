@@ -1,16 +1,18 @@
 FROM node:18-alpine
 
-WORKDIR /app
+WORKDIR /app/renderer
 
-# Copy renderer package files
-COPY renderer/package*.json ./renderer/
-RUN cd renderer && npm install
+# Copy package files first for better caching
+COPY renderer/package*.json ./
 
-# Copy renderer source code
-COPY renderer/ ./renderer/
+# Install dependencies
+RUN npm install
+
+# Copy all source code
+COPY renderer/ ./
 
 # Expose port
 EXPOSE 3000
 
-# Run the development server
-CMD ["sh", "-c", "cd renderer && npm run dev"]
+# Use a shell form to ensure proper signal handling
+CMD npx next dev --hostname 0.0.0.0 --port 3000

@@ -1,6 +1,6 @@
 import { NextPage } from 'next';
 import { Box, Typography, Button, Grid, Paper } from '@mui/material';
-import { Add, Search, Category, History } from '@mui/icons-material';
+import { Add, Search, Category, History, ViewList } from '@mui/icons-material';
 import Layout from '../components/Layout';
 import { useRouter } from 'next/router';
 
@@ -9,6 +9,10 @@ const HomePage: NextPage = () => {
 
   const handleCreateArticle = () => {
     router.push('/articles/new');
+  };
+
+  const handleViewArticles = () => {
+    router.push('/articles');
   };
 
   const handleSearchArticles = () => {
@@ -59,6 +63,35 @@ const HomePage: NextPage = () => {
               </Typography>
               <Typography variant="body2" color="text.secondary" textAlign="center">
                 Start writing your knowledge article
+              </Typography>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Paper
+              elevation={3}
+              sx={{
+                p: 3,
+                height: '200px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  elevation: 6,
+                  transform: 'translateY(-2px)',
+                },
+              }}
+              onClick={handleViewArticles}
+            >
+              <ViewList sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h6" component="h3" gutterBottom>
+                View All Articles
+              </Typography>
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                Browse your knowledge base
               </Typography>
             </Paper>
           </Grid>

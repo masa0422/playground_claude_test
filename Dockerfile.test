@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional test dependencies
+RUN pip install httpx pytest-asyncio pytest-xdist
+
+# Copy application code
+COPY backend/ ./backend/
+COPY database/ ./database/
+COPY tests/ ./tests/
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV DATABASE_URL=sqlite:///app/data/test_wiki.db
+
+# Default command runs tests
+CMD ["python", "-m", "pytest", "tests/", "-v", "--tb=short"]

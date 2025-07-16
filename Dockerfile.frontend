@@ -1,0 +1,16 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy renderer package files
+COPY renderer/package*.json ./renderer/
+RUN cd renderer && npm install
+
+# Copy renderer source code
+COPY renderer/ ./renderer/
+
+# Expose port
+EXPOSE 3000
+
+# Run the development server
+CMD ["sh", "-c", "cd renderer && npm run dev"]

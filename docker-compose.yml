@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./database:/app/database
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=sqlite:///app/data/test_wiki.db
+    depends_on:
+      - test-db
+    networks:
+      - wiki-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./renderer:/app/renderer
+    depends_on:
+      - backend
+    networks:
+      - wiki-network
+
+  test-db:
+    image: alpine:latest
+    volumes:
+      - ./data:/data
+    command: ["sh", "-c", "mkdir -p /data && touch /data/test_wiki.db"]
+    networks:
+      - wiki-network
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=sqlite:///app/data/test_wiki.db
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - wiki-network
+
+networks:
+  wiki-network:
+    driver: bridge
+
+volumes:
+  wiki-data:

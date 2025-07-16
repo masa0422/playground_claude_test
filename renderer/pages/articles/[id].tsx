@@ -85,6 +85,11 @@ const ArticleDetailPage: NextPage = () => {
     router.push(`/articles/${id}/history`);
   }, [router, id]);
   
+  // Handle category click - navigate to articles filtered by category
+  const handleCategoryClick = useCallback((categoryId: string) => {
+    router.push(`/articles?category=${categoryId}`);
+  }, [router]);
+  
   // Format date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -231,7 +236,17 @@ const ArticleDetailPage: NextPage = () => {
                         label={category.name}
                         size="small"
                         variant="outlined"
+                        clickable
+                        onClick={() => handleCategoryClick(category.id)}
                         style={{ backgroundColor: category.color || undefined }}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            backgroundColor: category.color ? 
+                              `${category.color}60` : 
+                              'action.hover',
+                          },
+                        }}
                       />
                     ))}
                   </Stack>

@@ -39,16 +39,20 @@ import { format } from 'date-fns';
 import Layout from '../../components/Layout';
 import { useArticlesList } from '../../hooks/useArticles';
 import { useArticlesStore } from '../../store/articles';
-import { ArticleListResponse } from '../../types/api';
+import { useCategoriesList } from '../../hooks/useCategories';
+import CategorySelect from '../../components/CategorySelect';
+import { ArticleListResponse, CategoryResponse } from '../../types/api';
 
 type SortOption = 'created_desc' | 'created_asc' | 'updated_desc' | 'updated_asc' | 'title_asc' | 'title_desc';
 
 const ArticlesListPage: NextPage = () => {
   const router = useRouter();
+  const { category: categoryParam } = router.query;
   
   // State for filters and pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('updated_desc');
+  const [selectedCategories, setSelectedCategories] = useState<CategoryResponse[]>([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage] = useState(12);
   
@@ -58,7 +62,18 @@ const ArticlesListPage: NextPage = () => {
   
   // Hooks
   const { data: articles = [], isLoading, error: fetchError } = useArticlesList(paginationParams);
+  const { data: categories = [] } = useCategoriesList();
   const { error, clearError } = useArticlesStore();
+  
+  // Handle category parameter from URL
+  React.useEffect(() => {
+    if (categoryParam && categories.length > 0) {
+      const category = categories.find(cat => cat.id === categoryParam);
+      if (category && !selectedCategories.find(c => c.id === category.id)) {
+        setSelectedCategories([category]);
+      }
+    }
+  }, [categoryParam, categories, selectedCategories]);
   
   // Filter and sort articles locally (in a real app, this would be done server-side)
   const filteredAndSortedArticles = useMemo(() => {
@@ -71,6 +86,16 @@ const ArticlesListPage: NextPage = () => {
         article.title.toLowerCase().includes(term) ||
         article.content.toLowerCase().includes(term) ||
         article.tags.some(tag => tag.toLowerCase().includes(term))
+      );
+    }
+    
+    // Filter by selected categories
+    if (selectedCategories.length > 0) {
+      const selectedCategoryIds = selectedCategories.map(cat => cat.id);
+      result = result.filter(article =>
+        article.categories?.some(category => 
+          selectedCategoryIds.includes(category.id)
+        )
       );
     }
     
@@ -95,7 +120,7 @@ const ArticlesListPage: NextPage = () => {
     });
     
     return result;
-  }, [articles, searchTerm, sortBy]);
+  }, [articles, searchTerm, sortBy, selectedCategories]);
   
   // Calculate pagination for filtered results
   const totalItems = filteredAndSortedArticles.length;
@@ -128,6 +153,21 @@ const ArticlesListPage: NextPage = () => {
     setSortBy(event.target.value as SortOption);
     setPage(1); // Reset to first page when sorting
   }, []);
+  
+  // Handle category filter change
+  const handleCategoryChange = useCallback((categories: CategoryResponse[]) => {
+    setSelectedCategories(categories);
+    setPage(1); // Reset to first page when filtering
+  }, []);
+  
+  // Handle category click from article card
+  const handleCategoryClick = useCallback((categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    if (category && !selectedCategories.find(c => c.id === category.id)) {
+      setSelectedCategories(prev => [...prev, category]);
+      setPage(1);
+    }
+  }, [categories, selectedCategories]);
   
   // Handle page change
   const handlePageChange = useCallback((event: React.ChangeEvent<unknown>, newPage: number) => {
@@ -206,7 +246,7 @@ const ArticlesListPage: NextPage = () => {
         {/* Filters and search */}
         <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 placeholder="Search articles..."
@@ -221,7 +261,18 @@ const ArticlesListPage: NextPage = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={4}>
+              <CategorySelect
+                value={selectedCategories}
+                onChange={handleCategoryChange}
+                label="Filter by Categories"
+                placeholder="Select categories to filter"
+                multiple={true}
+                showCreateButton={false}
+                maxSelection={5}
+              />
+            </Grid>
+            <Grid item xs={12} md={2}>
               <FormControl fullWidth>
                 <InputLabel>Sort by</InputLabel>
                 <Select
@@ -239,12 +290,41 @@ const ArticlesListPage: NextPage = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={2}>
               <Typography variant="body2" color="text.secondary" textAlign="right">
                 Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems}
               </Typography>
             </Grid>
           </Grid>
+          
+          {/* Active filters */}
+          {selectedCategories.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Active Category Filters:
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {selectedCategories.map((category) => (
+                  <Chip
+                    key={category.id}
+                    label={category.name}
+                    size="small"
+                    color="primary"
+                    variant="filled"
+                    onDelete={() => 
+                      setSelectedCategories(prev => 
+                        prev.filter(c => c.id !== category.id)
+                      )
+                    }
+                    sx={{ 
+                      backgroundColor: category.color ? `${category.color}40` : undefined,
+                      mb: 1,
+                    }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
         </Paper>
         
         {/* Articles grid */}
@@ -330,7 +410,20 @@ const ArticlesListPage: NextPage = () => {
                             label={category.name}
                             size="small"
                             variant="filled"
+                            clickable
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCategoryClick(category.id);
+                            }}
                             style={{ backgroundColor: category.color || undefined }}
+                            sx={{
+                              cursor: 'pointer',
+                              '&:hover': {
+                                backgroundColor: category.color ? 
+                                  `${category.color}80` : 
+                                  'action.hover',
+                              },
+                            }}
                           />
                         ))}
                         {article.categories.length > 2 && (

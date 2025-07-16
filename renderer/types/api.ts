@@ -127,18 +127,18 @@ export interface ValidationErrorResponse {
 // API endpoints
 export const API_ENDPOINTS = {
   // Articles
-  ARTICLES: '/api/v1/articles',
-  ARTICLE_BY_ID: (id: string) => `/api/v1/articles/${id}`,
-  ARTICLE_HISTORY: (id: string) => `/api/v1/articles/${id}/history`,
+  ARTICLES: '/api/v1/articles/',
+  ARTICLE_BY_ID: (id: string) => `/api/v1/articles/${id}/`,
+  ARTICLE_HISTORY: (id: string) => `/api/v1/articles/${id}/history/`,
   
   // Categories
-  CATEGORIES: '/api/v1/categories',
-  CATEGORY_BY_ID: (id: string) => `/api/v1/categories/${id}`,
-  ROOT_CATEGORIES: '/api/v1/categories/roots',
+  CATEGORIES: '/api/v1/categories/',
+  CATEGORY_BY_ID: (id: string) => `/api/v1/categories/${id}/`,
+  ROOT_CATEGORIES: '/api/v1/categories/roots/`,
   
   // Search
-  SEARCH_ARTICLES: '/api/v1/search/articles',
-  SEARCH_SUGGESTIONS: '/api/v1/search/suggestions',
+  SEARCH_ARTICLES: '/api/v1/search/articles/',
+  SEARCH_SUGGESTIONS: '/api/v1/search/suggestions/',
   
   // Health
   HEALTH: '/health',

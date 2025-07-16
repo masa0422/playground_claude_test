@@ -31,7 +31,17 @@ import {
   Label as LabelIcon,
   Category as CategoryIcon,
 } from '@mui/icons-material';
-import MDEditor from '@uiw/react-md-editor';
+import dynamic from 'next/dynamic';
+
+const MDEditor = dynamic(
+  () => import('@uiw/react-md-editor'),
+  { ssr: false }
+);
+
+const MDEditorMarkdown = dynamic(
+  () => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown),
+  { ssr: false }
+);
 import Layout from '../../components/Layout';
 import { useArticle, useArticleOperations } from '../../hooks/useArticles';
 import { useArticlesStore } from '../../store/articles';
@@ -288,7 +298,7 @@ const ArticleDetailPage: NextPage = () => {
         
         {/* Article content */}
         <Paper elevation={1} sx={{ p: 3 }}>
-          <MDEditor.Markdown 
+          <MDEditorMarkdown 
             source={article.content} 
             style={{ 
               backgroundColor: 'transparent',

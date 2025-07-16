@@ -20,7 +20,12 @@ import {
   Preview as PreviewIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
-import MDEditor from '@uiw/react-md-editor';
+import dynamic from 'next/dynamic';
+
+const MDEditor = dynamic(
+  () => import('@uiw/react-md-editor'),
+  { ssr: false }
+);
 import { ArticleCreate, ArticleUpdate, CategoryResponse } from '../types/api';
 
 interface ArticleEditorProps {

@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   backend:
@@ -27,10 +26,16 @@ services:
       - "3000:3000"
     volumes:
       - ./renderer:/app/renderer
+      - /app/renderer/node_modules
+    environment:
+      - NODE_ENV=development
     depends_on:
       - backend
     networks:
       - wiki-network
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
 
   test-db:
     image: alpine:latest

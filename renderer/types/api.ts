@@ -134,7 +134,7 @@ export const API_ENDPOINTS = {
   // Categories
   CATEGORIES: '/api/v1/categories/',
   CATEGORY_BY_ID: (id: string) => `/api/v1/categories/${id}/`,
-  ROOT_CATEGORIES: '/api/v1/categories/roots/`,
+  ROOT_CATEGORIES: '/api/v1/categories/roots/',
   
   // Search
   SEARCH_ARTICLES: '/api/v1/search/articles/',

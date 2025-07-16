@@ -1,0 +1,99 @@
+# Dockerfile for Electron application build environment
+FROM node:18-alpine
+
+# Install required packages for Electron build
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libx11-dev \
+    libxss1 \
+    libgconf-2-4 \
+    libxrandr2 \
+    libasound2-dev \
+    libxtst6 \
+    libxss1 \
+    libdrm2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libxss1 \
+    libnss3 \
+    git
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY renderer/package*.json ./renderer/
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Install renderer dependencies
+RUN cd renderer && npm ci --only=production
+
+# Copy source code
+COPY . .
+
+# Set environment variables for Electron build
+ENV ELECTRON_CACHE=/app/.electron-cache
+ENV ELECTRON_BUILDER_CACHE=/app/.electron-builder-cache
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
+# Create cache directories
+RUN mkdir -p $ELECTRON_CACHE $ELECTRON_BUILDER_CACHE
+
+# Build the application
+RUN npm run build
+
+# Create a minimal runtime image
+FROM node:18-alpine AS runtime
+
+RUN apk add --no-cache \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    libx11 \
+    libxss1 \
+    libgconf-2-4 \
+    libxrandr2 \
+    libasound2 \
+    libxtst6 \
+    libxss1 \
+    libdrm2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libxss1 \
+    libnss3
+
+WORKDIR /app
+
+# Copy built application from build stage
+COPY --from=0 /app/dist /app/dist
+COPY --from=0 /app/renderer/out /app/renderer/out
+COPY --from=0 /app/node_modules /app/node_modules
+COPY --from=0 /app/package.json /app/package.json
+
+# Create entrypoint script
+RUN echo '#!/bin/sh\n\
+export DISPLAY=:99\n\
+Xvfb :99 -screen 0 1024x768x24 &\n\
+npm start\n\
+' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+# Set entry point
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Expose ports for debugging
+EXPOSE 3000 8000
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD ps aux | grep -q electron || exit 1

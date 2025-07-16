@@ -1,0 +1,190 @@
+{
+  "application": {
+    "name": "Wiki Desktop App",
+    "version": "1.0.0",
+    "description": "A local wiki desktop application built with Electron, Next.js, and FastAPI",
+    "author": "",
+    "license": "MIT"
+  },
+  "development": {
+    "backend": {
+      "host": "localhost",
+      "port": 8000,
+      "url": "http://localhost:8000",
+      "reload": true,
+      "log_level": "info"
+    },
+    "frontend": {
+      "host": "localhost",
+      "port": 3000,
+      "url": "http://localhost:3000",
+      "hot_reload": true
+    },
+    "electron": {
+      "dev_tools": true,
+      "window": {
+        "width": 1200,
+        "height": 800,
+        "min_width": 800,
+        "min_height": 600,
+        "show": true,
+        "center": true,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true
+      }
+    }
+  },
+  "production": {
+    "backend": {
+      "host": "0.0.0.0",
+      "port": 8000,
+      "url": "http://localhost:8000",
+      "reload": false,
+      "log_level": "warning"
+    },
+    "frontend": {
+      "host": "localhost",
+      "port": 3000,
+      "url": "http://localhost:3000",
+      "hot_reload": false
+    },
+    "electron": {
+      "dev_tools": false,
+      "window": {
+        "width": 1200,
+        "height": 800,
+        "min_width": 800,
+        "min_height": 600,
+        "show": true,
+        "center": true,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true
+      }
+    }
+  },
+  "database": {
+    "development": {
+      "type": "sqlite",
+      "path": "./data/wiki.db",
+      "echo": false
+    },
+    "test": {
+      "type": "sqlite",
+      "path": "./data/test_wiki.db",
+      "echo": false
+    },
+    "production": {
+      "type": "sqlite",
+      "path": "./data/wiki.db",
+      "echo": false
+    }
+  },
+  "security": {
+    "cors": {
+      "origins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+      ],
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allow_credentials": true
+    },
+    "electron": {
+      "node_integration": false,
+      "context_isolation": true,
+      "enable_remote_module": false,
+      "preload_script": "./electron/preload.js"
+    }
+  },
+  "build": {
+    "output_dir": "dist",
+    "renderer_output_dir": "renderer/out",
+    "optimization": {
+      "minify": true,
+      "tree_shaking": true,
+      "code_splitting": true
+    },
+    "wsl_optimization": {
+      "enabled": true,
+      "memory_limit": "2048",
+      "build_timeout": 300000
+    }
+  },
+  "testing": {
+    "backend": {
+      "database_url": "sqlite:///./test_wiki.db",
+      "test_timeout": 30000
+    },
+    "frontend": {
+      "test_timeout": 30000
+    },
+    "electron": {
+      "headless": true,
+      "test_timeout": 60000,
+      "screenshot_on_failure": true
+    }
+  },
+  "docker": {
+    "backend": {
+      "image": "python:3.11-slim",
+      "port": 8000,
+      "volumes": [
+        "./backend:/app/backend",
+        "./database:/app/database",
+        "./data:/app/data"
+      ]
+    },
+    "frontend": {
+      "image": "node:18-alpine",
+      "port": 3000,
+      "volumes": [
+        "./renderer:/app/renderer"
+      ]
+    },
+    "electron": {
+      "image": "node:18-alpine",
+      "memory_limit": "2048m",
+      "volumes": [
+        "./:/app",
+        "./data:/app/data"
+      ]
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "file": {
+      "enabled": true,
+      "path": "./logs/app.log",
+      "max_size": "10MB",
+      "max_files": 5
+    },
+    "console": {
+      "enabled": true,
+      "colors": true
+    }
+  },
+  "features": {
+    "auto_save": true,
+    "auto_backup": true,
+    "full_text_search": true,
+    "category_management": true,
+    "tag_management": true,
+    "export_import": true,
+    "themes": {
+      "default": "light",
+      "available": ["light", "dark", "auto"]
+    }
+  },
+  "paths": {
+    "data": "./data",
+    "logs": "./logs",
+    "cache": "./cache",
+    "backups": "./backups",
+    "exports": "./exports",
+    "temp": "./temp"
+  }
+}

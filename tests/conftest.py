@@ -61,3 +61,24 @@ def sample_category_data():
         "description": "This is a test category",
         "color": "#FF0000"
     }
+
+# Electron integration test fixtures
+@pytest.fixture(scope="session")
+def electron_test_env():
+    """Setup environment for Electron integration tests"""
+    # Set environment variables for testing
+    os.environ["NODE_ENV"] = "test"
+    os.environ["ELECTRON_IS_TEST"] = "true"
+    os.environ["BACKEND_URL"] = "http://localhost:8000"
+    
+    yield
+    
+    # Cleanup
+    os.environ.pop("NODE_ENV", None)
+    os.environ.pop("ELECTRON_IS_TEST", None)
+    os.environ.pop("BACKEND_URL", None)
+
+@pytest.fixture
+def health_check_endpoint():
+    """Fixture for health check endpoint testing"""
+    return "http://localhost:8000/health"

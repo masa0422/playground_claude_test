@@ -1,5 +1,6 @@
 import { NextPage } from 'next';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import {
   Box,
   TextField,
@@ -8,55 +9,79 @@ import {
   Paper,
   List,
   ListItem,
-  ListItemText,
   Chip,
   InputAdornment,
   CircularProgress,
+  Alert,
+  Container,
+  Breadcrumbs,
+  Link,
+  Divider,
 } from '@mui/material';
-import { Search as SearchIcon, Article } from '@mui/icons-material';
+import { 
+  Search as SearchIcon, 
+  Article as ArticleIcon,
+  Home as HomeIcon,
+  Clear as ClearIcon,
+} from '@mui/icons-material';
 import Layout from '../components/Layout';
-
-interface SearchResult {
-  id: string;
-  title: string;
-  content: string;
-  categories: string[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { useSearchArticles } from '../hooks/useSearch';
+import { useCategoriesList } from '../hooks/useCategories';
+import { SearchQuery, ArticleListResponse } from '../types/api';
 
 const SearchPage: NextPage = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [currentSearchParams, setCurrentSearchParams] = useState<SearchQuery>({
+    q: '',
+    category_ids: [],
+    tags: [],
+    skip: 0,
+    limit: 20,
+  });
 
-  const handleSearch = async () => {
+  // Hooks
+  const { data: categories = [] } = useCategoriesList();
+  const { data: searchResults, isLoading, error } = useSearchArticles(
+    currentSearchParams,
+    hasSearched && !!currentSearchParams.q
+  );
+
+  const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
 
-    setLoading(true);
-    setHasSearched(true);
+    const searchParams: SearchQuery = {
+      q: searchQuery.trim(),
+      category_ids: [],
+      tags: [],
+      skip: 0,
+      limit: 20,
+    };
 
-    try {
-      // TODO: Implement actual search API call
-      // For now, this is a placeholder
-      setTimeout(() => {
-        setSearchResults([
-          {
-            id: '1',
-            title: 'Sample Article',
-            content: 'This is a sample article content...',
-            categories: ['Technology', 'Development'],
-            createdAt: '2024-01-01',
-            updatedAt: '2024-01-01',
-          },
-        ]);
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Search error:', error);
-      setLoading(false);
-    }
+    setCurrentSearchParams(searchParams);
+    setHasSearched(true);
+  }, [searchQuery]);
+
+  const handleClear = useCallback(() => {
+    setSearchQuery('');
+    setHasSearched(false);
+    setCurrentSearchParams({
+      q: '',
+      category_ids: [],
+      tags: [],
+      skip: 0,
+      limit: 20,
+    });
+  }, []);
+
+  const handleArticleClick = useCallback((articleId: string) => {
+    router.push(`/articles/${articleId}`);
+  }, [router]);
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || 'Unknown';
   };
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
@@ -67,90 +92,168 @@ const SearchPage: NextPage = () => {
 
   return (
     <Layout>
-      <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Search Articles
-        </Typography>
-
-        <Box sx={{ mb: 4 }}>
-          <TextField
-            fullWidth
-            label="Search for articles..."
-            variant="outlined"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+        {/* Breadcrumbs */}
+        <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 3 }}>
+          <Link
+            color="inherit"
+            href="/"
+            sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+            onClick={(e) => {
+              e.preventDefault();
+              router.push('/');
             }}
-            sx={{ mb: 2 }}
-          />
-          <Button
-            variant="contained"
-            onClick={handleSearch}
-            disabled={loading || !searchQuery.trim()}
-            startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
           >
-            {loading ? 'Searching...' : 'Search'}
-          </Button>
+            <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />
+            Home
+          </Link>
+          <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
+            <SearchIcon sx={{ mr: 0.5 }} fontSize="inherit" />
+            Search
+          </Typography>
+        </Breadcrumbs>
+
+        {/* Page header */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Search Articles
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Search through your knowledge base to find relevant articles.
+          </Typography>
         </Box>
 
+        {/* Error display */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Search form */}
+        <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+            <TextField
+              fullWidth
+              label="Search for articles..."
+              variant="outlined"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              disabled={isLoading}
+            />
+            <Button
+              variant="contained"
+              onClick={handleSearch}
+              disabled={isLoading || !searchQuery.trim()}
+              startIcon={isLoading ? <CircularProgress size={16} /> : <SearchIcon />}
+              sx={{ minWidth: 120, height: 56 }}
+            >
+              {isLoading ? 'Searching...' : 'Search'}
+            </Button>
+            {hasSearched && (
+              <Button
+                variant="outlined"
+                onClick={handleClear}
+                startIcon={<ClearIcon />}
+                sx={{ minWidth: 100, height: 56 }}
+              >
+                Clear
+              </Button>
+            )}
+          </Box>
+        </Paper>
+
+        {/* Search results */}
         {hasSearched && (
           <Box>
             <Typography variant="h6" gutterBottom>
-              Search Results ({searchResults.length})
+              Search Results for "{currentSearchParams.q}"
+              {searchResults && ` (${searchResults.articles?.length || 0} found)`}
             </Typography>
 
-            {searchResults.length === 0 && !loading ? (
-              <Paper sx={{ p: 3, textAlign: 'center' }}>
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : searchResults?.articles?.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <SearchIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No articles found
+                </Typography>
                 <Typography color="text.secondary">
-                  No articles found for "{searchQuery}"
+                  Try adjusting your search terms or search for something else.
                 </Typography>
               </Paper>
             ) : (
               <List>
-                {searchResults.map((result) => (
-                  <ListItem key={result.id} divider>
+                {searchResults?.articles?.map((article: ArticleListResponse) => (
+                  <ListItem key={article.id} divider sx={{ px: 0 }}>
                     <Paper
                       sx={{
                         width: '100%',
-                        p: 2,
+                        p: 3,
                         cursor: 'pointer',
                         '&:hover': {
                           bgcolor: 'action.hover',
                         },
                       }}
+                      onClick={() => handleArticleClick(article.id)}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Article sx={{ mr: 1, color: 'primary.main' }} />
+                        <ArticleIcon sx={{ mr: 1, color: 'primary.main' }} />
                         <Typography variant="h6" component="h3">
-                          {result.title}
+                          {article.title}
                         </Typography>
                       </Box>
+                      
                       <Typography
                         variant="body2"
                         color="text.secondary"
-                        sx={{ mb: 1 }}
+                        sx={{ mb: 2 }}
                       >
-                        {result.content.substring(0, 200)}...
+                        {article.content.substring(0, 300)}
+                        {article.content.length > 300 && '...'}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                        {result.categories.map((category) => (
+                      
+                      <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                        {article.categories?.map((category) => (
                           <Chip
-                            key={category}
-                            label={category}
+                            key={category.id}
+                            label={category.name}
                             size="small"
                             color="primary"
+                            variant="outlined"
+                            sx={{ 
+                              backgroundColor: category.color ? `${category.color}20` : undefined,
+                              borderColor: category.color || undefined,
+                            }}
+                          />
+                        ))}
+                        {article.tags?.map((tag) => (
+                          <Chip
+                            key={tag}
+                            label={tag}
+                            size="small"
+                            color="secondary"
                             variant="outlined"
                           />
                         ))}
                       </Box>
+                      
+                      <Divider sx={{ my: 1 }} />
+                      
                       <Typography variant="caption" color="text.secondary">
-                        Updated: {new Date(result.updatedAt).toLocaleDateString()}
+                        Updated: {new Date(article.updated_at).toLocaleDateString()} • 
+                        Version: {article.version}
                       </Typography>
                     </Paper>
                   </ListItem>
@@ -159,7 +262,7 @@ const SearchPage: NextPage = () => {
             )}
           </Box>
         )}
-      </Box>
+      </Container>
     </Layout>
   );
 };

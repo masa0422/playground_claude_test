@@ -20,6 +20,7 @@ import Layout from '../../../components/Layout';
 import { ArticleEditor } from '../../../components/ArticleEditor';
 import { useArticle, useArticleOperations } from '../../../hooks/useArticles';
 import { useArticlesStore } from '../../../store/articles';
+import { useCategoriesList } from '../../../hooks/useCategories';
 import { ArticleUpdate } from '../../../types/api';
 
 const EditArticlePage: NextPage = () => {
@@ -30,6 +31,7 @@ const EditArticlePage: NextPage = () => {
   const { data: article, isLoading: isLoadingArticle, error: fetchError } = useArticle(id);
   const { updateArticle, isUpdating } = useArticleOperations();
   const { error, clearError } = useArticlesStore();
+  const { data: categories = [] } = useCategoriesList();
   
   // Handle article update
   const handleSave = useCallback(async (data: ArticleUpdate) => {
@@ -221,7 +223,7 @@ const EditArticlePage: NextPage = () => {
           showPreview={true}
           autoSave={true}
           autoSaveInterval={30000} // 30 seconds
-          availableCategories={[]} // Will be populated when category hooks are implemented
+          availableCategories={categories}
         />
         
         {/* Help text */}

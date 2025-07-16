@@ -21,6 +21,7 @@ import {
   Code as CodeIcon,
 } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
+import CategorySelect from './CategorySelect';
 
 const MDEditor = dynamic(
   () => import('@uiw/react-md-editor'),
@@ -231,30 +232,15 @@ export const ArticleEditor: React.FC<ArticleEditorProps> = ({
         />
         
         {/* Categories selection */}
-        <Autocomplete
-          multiple
-          options={availableCategories}
-          getOptionLabel={(option) => option.name}
+        <CategorySelect
           value={selectedCategories}
-          onChange={(event, newValue) => setSelectedCategories(newValue)}
-          renderTags={(value, getTagProps) =>
-            value.map((option, index) => (
-              <Chip
-                variant="outlined"
-                label={option.name}
-                size="small"
-                style={{ backgroundColor: option.color || undefined }}
-                {...getTagProps({ index })}
-              />
-            ))
-          }
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Categories"
-              placeholder="Select categories"
-            />
-          )}
+          onChange={setSelectedCategories}
+          label="Categories"
+          placeholder="Select categories for this article"
+          helperText="Choose categories to help organize your article"
+          multiple={true}
+          showCreateButton={true}
+          maxSelection={5}
         />
         
         {/* Tags input */}

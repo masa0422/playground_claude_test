@@ -9,7 +9,7 @@
     "dev:electron": "wait-on http://localhost:3000 && electron .",
     "build": "npm run build:next && npm run build:electron",
     "build:next": "cd renderer && NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build",
-    "build:electron": "tsc electron/main.ts --outDir dist/electron",
+    "build:electron": "tsc electron/main.ts electron/preload.ts --outDir dist/electron",
     "build:memory-safe": "npm run build:electron && cd renderer && NODE_OPTIONS=\"--max-old-space-size=2048\" npm run build",
     "start": "electron .",
     "test": "jest",
